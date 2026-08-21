@@ -28,4 +28,12 @@ class PropertiesRepositoryImpl(
 	override suspend fun clearAllProperties() {
 		dataStoreManager.clearAllProperties()
 	}
+
+	override suspend fun saveQuestionIndex(index: Int) {
+		dataStoreManager.saveQuestionIndex(index)
+	}
+
+	override fun getQuestionIndex(): Flow<Int> {
+		return dataStoreManager.getQuestionIndex()
+	}
 }
