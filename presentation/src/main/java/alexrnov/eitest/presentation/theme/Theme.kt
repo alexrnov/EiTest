@@ -272,11 +272,11 @@ fun AppTheme(
 fun adaptiveTypography(isTab: Boolean): Typography {
     return Typography(
         titleMedium = TextStyle(
-            fontSize = if (isTab) 18.sp else 16.sp,
+            fontSize = if (isTab) 19.sp else 17.sp,
             fontWeight = FontWeight.Medium
         ),
         bodyMedium = TextStyle(
-            fontSize = if (isTab) 16.sp else 14.sp
+            fontSize = if (isTab) 18.sp else 16.sp
         )
     )
 }

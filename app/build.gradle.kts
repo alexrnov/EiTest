@@ -9,12 +9,21 @@ android {
 		version = release(37)
 	}
 
+	packaging {
+		resources {
+			excludes += "META-INF/LICENSE.md"
+			excludes += "META-INF/LICENSE-notice.md"
+			excludes += "META-INF/LICENSE*"
+			excludes += "META-INF/NOTICE*"
+		}
+	}
+
 	defaultConfig {
 		applicationId = "alexrnov.eitest"
 		minSdk = 24
 		targetSdk = 37
-		versionCode = 1
-		versionName = "1.0"
+		versionCode = 4
+		versionName = "1.5.0"
 
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 	}

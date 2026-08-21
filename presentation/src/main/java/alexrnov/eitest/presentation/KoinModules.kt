@@ -8,14 +8,15 @@ val presentationModule = module {
 	viewModel {
 		HomeViewModel(
 			repository = get(),
-			calculateValueUseCase = get()
+			calculateValueUseCase = get(),
+			clearAllDataUseCase = get()
 		)
 	}
 
 	viewModel {
 		SettingsViewModel(
 			repository = get(), // Koin сам найдет SettingsRepository из dataModule
-			//clearAllDataUseCase = get() // Koin сам найдет ClearAllData из domainModule
+			clearAllDataUseCase = get() // Koin сам найдет ClearAllData из domainModule
 		)
 	}
 }

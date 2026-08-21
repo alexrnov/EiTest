@@ -1,0 +1,7 @@
+FROM qwen2.5-coder:7b
+
+# Понижаем температуру, чтобы код был строгим и предсказуемым
+PARAMETER temperature 0.1
+# Включаем жесткий штраф за повторение одних и тех же строк/слов
+PARAMETER repeat_penalty 1.3
+PARAMETER repeat_last_n 128

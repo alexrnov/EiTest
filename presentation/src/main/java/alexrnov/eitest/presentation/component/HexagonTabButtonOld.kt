@@ -1,15 +1,12 @@
-package alexrnov.eitest.presentation
+package alexrnov.eitest.presentation.component
 
 import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,37 +15,36 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 fun Hexagon(
-	text: String,
 	modifier: Modifier = Modifier,
 	size: Dp = 60.dp,
 	backgroundColor: Color = MaterialTheme.colorScheme.primaryContainer,
-	textColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
 	isSelected: Boolean = false,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	content: @Composable () -> Unit // Передаем Composable-контент вместо строки
 ) {
 	val glowColor = backgroundColor
 
 	Box(
 		modifier = modifier
 			.size(size)
-			// 1. СЛОИ УСИЛЕННОГО РАЗМЫТИЯ
+			// слои усиленного размытия
 			.then(
 				if (isSelected) {
-					Modifier.drawBehind {
+					Modifier
+						.graphicsLayer(renderEffect = null) // перенесет отрисовку слоя на GPU и разрешит аппаратное ускорение для размытия
+						.drawBehind {
 						// Позволяем холсту не обрезать рисунок за пределами 60.dp
 						// (Работает на Android, если у родителя выключен clipChildren)
 
@@ -102,11 +98,11 @@ fun Hexagon(
 					}
 				} else Modifier
 			)
-			// 2. ОБРЕЗАНИЕ И ФОН КНОПКИ
+			// обрезание и фон кнопки
 			.clip(HexagonShape)
 			.clickable { onClick() }
 			.background(backgroundColor)
-			// 3. ОБВОДКА (Для усиления эффекта вернули 3.dp белого "ядра")
+			// обводка (для усиления эффекта 3.dp белого "ядра")
 			.then(
 				if (isSelected) {
 					Modifier.border(3.dp, Color.White, HexagonShape)
@@ -116,28 +112,7 @@ fun Hexagon(
 			),
 		contentAlignment = Alignment.Center
 	) {
-		Text(
-			text = text,
-			color = textColor,
-			fontSize = (size.value * 0.35f).sp,
-			fontWeight = FontWeight.Bold,
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis
-		)
+		// Отрисовываем переданный контент по центру гексагона
+		content()
 	}
-}
-
-// Форма правильного шестиугольника остается прежней
-val HexagonShape = GenericShape { size, _ ->
-	val radius = size.width / 2f
-	val centerX = size.width / 2f
-	val centerY = size.height / 2f
-
-	for (i in 0 until 6) {
-		val angle = Math.PI * 2 * i / 6 - Math.PI / 2
-		val x = centerX + radius * cos(angle).toFloat()
-		val y = centerY + radius * sin(angle).toFloat()
-		if (i == 0) moveTo(x, y) else lineTo(x, y)
-	}
-	close()
 }
