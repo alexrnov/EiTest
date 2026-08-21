@@ -11,6 +11,15 @@ android {
 		version = release(37)
 	}
 
+	packaging {
+		resources {
+			excludes += "META-INF/LICENSE.md"
+			excludes += "META-INF/LICENSE-notice.md"
+			excludes += "META-INF/LICENSE*"
+			excludes += "META-INF/NOTICE*"
+		}
+	}
+
 	defaultConfig {
 		minSdk = 24
 
@@ -24,35 +33,32 @@ android {
 	buildFeatures {
 		compose = true
 	}
-
 }
 
 dependencies {
 	implementation(libs.androidx.appcompat)
-	implementation(libs.androidx.core.ktx) // KTX расширения (базовые функции Kotlin для Android)
+	implementation(libs.androidx.compose.ui.text)
+	implementation(libs.androidx.core.ktx)
 	implementation(libs.material)
-	testImplementation(libs.junit) // тестирование интерфейса
+	testImplementation(libs.junit)
 	androidTestImplementation(libs.androidx.espresso.core)
 	androidTestImplementation(libs.androidx.junit)
 
-	// платформа Compose (обязательно для управления версиями)
+	// платформа Compose
 	implementation(platform(libs.androidx.compose.bom))
+	implementation(libs.androidx.activity.compose)
 
 	// основные компоненты интерфейса
 	implementation(libs.androidx.compose.ui)
 	implementation(libs.androidx.compose.ui.graphics)
 	implementation(libs.androidx.compose.material3)
 
-	// инструменты для Preview в Android Studio
+	// инструменты для Preview
 	implementation(libs.androidx.compose.ui.tooling.preview)
 	debugImplementation(libs.androidx.compose.ui.tooling)
 
-	//
 	implementation(libs.androidx.navigation.compose)
-	// Сама библиотека для работы с JSON / навигацией
 	implementation(libs.kotlinx.serialization.json)
-
-	// жизненный цикл (нужно для ViewModel и collectAsStateWithLifecycle)
 	implementation(libs.androidx.lifecycle.runtime.ktx)
 
 	androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -61,6 +67,27 @@ dependencies {
 	implementation(platform("io.insert-koin:koin-bom:4.0.3"))
 	implementation("io.insert-koin:koin-android")
 	implementation("io.insert-koin:koin-androidx-compose")
+
+	// --- Зависимости для androidTest (Инструментальные тесты) ---
+	androidTestImplementation("androidx.test.ext:junit:1.2.1")
+	androidTestImplementation("androidx.test:runner:1.6.2")
+
+	// Koin для тестов в Android
+	androidTestImplementation("io.insert-koin:koin-test:3.5.6")
+	androidTestImplementation("io.insert-koin:koin-android-test:3.5.6")
+
+	// Поддержка сорутин в тестах
+	androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
+	// СТАБИЛЬНЫЙ MOCKITO ДЛЯ ANDROID (Взамен капризного MockK)
+	androidTestImplementation("org.mockito:mockito-android:5.23.0")
+
+	// --- Зависимости для Jetpack Compose & Lifecycle ---
+	implementation("androidx.compose.ui:ui:1.7.2")
+	implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5")
+
+	// Локальные Unit-тесты на ПК (JUnit 4 + Mockito Core)
+	testImplementation(libs.mockito.core)
 
 	implementation(project(":domain"))
 }
