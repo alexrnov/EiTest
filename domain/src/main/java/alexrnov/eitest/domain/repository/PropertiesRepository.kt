@@ -9,4 +9,7 @@ interface PropertiesRepository {
 	suspend fun getPropertiesForTab(tabIndex: Int): List<Float>
 	fun getAllPropertiesFlow(): Flow<AllPropertiesState>
 	suspend fun clearAllProperties()
+
+	suspend fun saveQuestionIndex(index: Int)
+	fun getQuestionIndex(): Flow<Int>
 }

@@ -43,8 +43,7 @@ fun SettingsComponent(
 			isDialogVisible = isDialogVisible,
 			showDialog = settingsViewModel::showDialog,
 			hideDialog = settingsViewModel::hideDialog,
-			//clearAllData = settingsViewModel::clearAllData,
-			clearAllData = {},
+			clearAllData = settingsViewModel::clearAllData,
 			isTablet = isTablet,
 			clearLocalBuffer = clearLocalBuffer
 		)

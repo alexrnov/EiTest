@@ -9,7 +9,10 @@ import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.flow.Flow
 import alexrnov.eitest.domain.AllPropertiesState
+import alexrnov.eitest.domain.DEFAULT_QUESTION_INDEX
 import alexrnov.eitest.domain.DEFAULT_SLIDER_VALUE
+import androidx.datastore.preferences.core.intPreferencesKey
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 val Context.propertiesDataStore by preferencesDataStore(name = "properties")
 
@@ -17,50 +20,28 @@ class PropertiesDataStoreManager(context: Context) {
 	private val dataStore = context.propertiesDataStore
 
 	companion object {
-		// red tab
-		val LIFE_ENERGY_KEY = floatPreferencesKey("life_energy")
-		val CREATIVE_KEY = floatPreferencesKey("creative")
-		val JOY_KEY = floatPreferencesKey("joy")
+		// EQ tab
+		val EQ1 = floatPreferencesKey("eq1")
+		val EQ2 = floatPreferencesKey("eq2")
+		val EQ3 = floatPreferencesKey("eq3")
 
-		// orange tab
-		val HEALTH_KEY = floatPreferencesKey("health")
-		val SAFETY_KEY = floatPreferencesKey("safety")
-		val FINANCE_KEY = floatPreferencesKey("finance")
+		// SQ tab
+		val SQ1 = floatPreferencesKey("sq1")
+		val SQ2 = floatPreferencesKey("sq2")
+		val SQ3 = floatPreferencesKey("sq3")
 
-		// yellow tab
-		val CONFIDENCE_KEY = floatPreferencesKey("confidence")
-		val VOLITION_KEY = floatPreferencesKey("volition")
-		val SOCIAL_KEY = floatPreferencesKey("social")
+		// RQ tab
+		val RQ1 = floatPreferencesKey("rq1")
+		val RQ2 = floatPreferencesKey("rq2")
+		val RQ3 = floatPreferencesKey("rq3")
 
-		// green tab
-		val KINDNESS_KEY = floatPreferencesKey("kindness")
-		val HEART_KEY = floatPreferencesKey("heart")
-		val NATURE_KEY = floatPreferencesKey("nature")
-
-		// light blue tab
-		val COMMUNICATION_KEY = floatPreferencesKey("communication")
-		val HONESTY_KEY = floatPreferencesKey("honesty")
-		val THROAT_KEY = floatPreferencesKey("throat")
-
-		// blue tab
-		val INTELLIGENCE_KEY = floatPreferencesKey("intelligence")
-		val INTUITION_KEY = floatPreferencesKey("intuition")
-		val IMAGINATION_KEY = floatPreferencesKey("imagination")
-
-		// pink tab
-		val UNIVERSE_KEY = floatPreferencesKey("universe")
-		val SLEEP_KEY = floatPreferencesKey("sleep")
-		val MENTAL_KEY = floatPreferencesKey("mental")
+		val QUESTION_INDEX = intPreferencesKey("question_index")
 	}
 
 	private val keys: Map<Int, List<Preferences.Key<Float>>> = mapOf(
-		0 to listOf(HEALTH_KEY, SAFETY_KEY, FINANCE_KEY),
-		1 to listOf(LIFE_ENERGY_KEY, CREATIVE_KEY, JOY_KEY),
-		2 to listOf(CONFIDENCE_KEY, VOLITION_KEY, SOCIAL_KEY),
-		3 to listOf(KINDNESS_KEY, HEART_KEY, NATURE_KEY),
-		4 to listOf(COMMUNICATION_KEY, HONESTY_KEY, THROAT_KEY),
-		5 to listOf(INTELLIGENCE_KEY, INTUITION_KEY, IMAGINATION_KEY),
-		6 to listOf(UNIVERSE_KEY, SLEEP_KEY, MENTAL_KEY)
+		0 to listOf(EQ1, EQ2, EQ3),
+		1 to listOf(SQ1, SQ2, SQ3),
+		2 to listOf(RQ1, RQ2, RQ3)
 	)
 
 	suspend fun saveProperty(tabIndex: Int, propertyIndex: Int, value: Float) {
@@ -100,15 +81,39 @@ class PropertiesDataStoreManager(context: Context) {
 			}
 
 			AllPropertiesState(tabsData = resultMap)
-		}
+			// пропускает UI-событие дальше только если данные реально изменились,
+			// чтобы при изменении questionIndex не обновлялись ползунки
+		}.distinctUntilChanged()
 	}
 
 	suspend fun clearAllProperties() {
+		/*
 		dataStore.edit { preferences ->
 			// Просто полностью очищаем файл настроек DataStore.
 			// При следующем чтении все ваши ключи вернут null,
 			// и автоматически подставится DEFAULT_SLIDER_VALUE!
 			preferences.clear()
+		}
+
+		 */
+
+		dataStore.edit { preferences ->
+			// Вместо полной очистки файла, удаляем только ключи слайдеров
+			keys.values.flatten().forEach { key ->
+				preferences.remove(key)
+			}
+		}
+	}
+
+	suspend fun saveQuestionIndex(index: Int) {
+		dataStore.edit { preferences ->
+			preferences[QUESTION_INDEX] = index
+		}
+	}
+
+	fun getQuestionIndex(): Flow<Int> {
+		return dataStore.data.map { preferences ->
+			preferences[QUESTION_INDEX] ?: DEFAULT_QUESTION_INDEX
 		}
 	}
 }

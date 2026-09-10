@@ -4,7 +4,6 @@ import android.graphics.BlurMaskFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.GenericShape
@@ -45,7 +44,7 @@ fun Hexagon(
 	Box(
 		modifier = modifier
 			.size(size)
-			// 1. СЛОИ УСИЛЕННОГО РАЗМЫТИЯ
+			// слои усиленного размытия
 			.then(
 				if (isSelected) {
 					Modifier.drawBehind {
@@ -102,11 +101,11 @@ fun Hexagon(
 					}
 				} else Modifier
 			)
-			// 2. ОБРЕЗАНИЕ И ФОН КНОПКИ
+			// обрезание и фон кнопки
 			.clip(HexagonShape)
 			.clickable { onClick() }
 			.background(backgroundColor)
-			// 3. ОБВОДКА (Для усиления эффекта вернули 3.dp белого "ядра")
+			// обводка (для усиления эффекта 3.dp белого "ядра")
 			.then(
 				if (isSelected) {
 					Modifier.border(3.dp, Color.White, HexagonShape)

@@ -29,6 +29,7 @@ android {
 
 dependencies {
 	implementation(libs.androidx.appcompat)
+	implementation(libs.androidx.compose.ui.text)
 	implementation(libs.androidx.core.ktx) // KTX расширения (базовые функции Kotlin для Android)
 	implementation(libs.material)
 	testImplementation(libs.junit) // тестирование интерфейса
@@ -37,6 +38,7 @@ dependencies {
 
 	// платформа Compose (обязательно для управления версиями)
 	implementation(platform(libs.androidx.compose.bom))
+	implementation(libs.androidx.activity.compose) // для ComponentActivity и setContent
 
 	// основные компоненты интерфейса
 	implementation(libs.androidx.compose.ui)

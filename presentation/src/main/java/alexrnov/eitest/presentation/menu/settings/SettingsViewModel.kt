@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
 	private val repository: SettingsRepository,
-	//private val clearAllDataUseCase: ClearAllDataUseCase
+	private val clearAllDataUseCase: ClearAllDataUseCase
 ) : ViewModel() {
 
 	// Теперь поток идет из репозитория через абстракцию
@@ -42,13 +42,9 @@ class SettingsViewModel(
 		}
 	}
 
-	/*
 	fun clearAllData() {
 		viewModelScope.launch {
 			clearAllDataUseCase.invoke()
 		}
 	}
-
-
-	 */
 }
