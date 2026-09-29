@@ -4,39 +4,66 @@ import alexrnov.eitest.domain.repository.PropertiesRepository
 import alexrnov.eitest.domain.usecase.CalculateValueUseCase
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import alexrnov.eitest.domain.DEFAULT_SLIDER_VALUE
+import alexrnov.eitest.domain.usecase.ClearAllDataUseCase
+import kotlinx.coroutines.Dispatchers
+import kotlin.math.roundToInt
 
 // Модель состояния всего экрана
 data class HomeUiState(
-	val sphereStates: List<SphereState> = emptyList(),
+	val tabStates: List<TabState> = emptyList(),
 	val isAllDataLoaded: Boolean = false
 )
 
+data class ArchetypeResult(
+	val percent: String,
+	val type: Archetype
+)
+
+const val TABS = 3
+
 class HomeViewModel(
 	private val repository: PropertiesRepository,
-	private val calculateValueUseCase: CalculateValueUseCase
+	private val calculateValueUseCase: CalculateValueUseCase,
+	private val clearAllDataUseCase: ClearAllDataUseCase
 ) : ViewModel() {
-	private val _selectedCategory = MutableStateFlow(IntellectCategory.EQ)
-	val selectedCategory = _selectedCategory.asStateFlow()
+	private val _isUpdateDialogVisible = MutableStateFlow(false)
+	val isUpdateDialogVisible = _isUpdateDialogVisible.asStateFlow()
 
-	fun selectCategory(value: IntellectCategory) {
-		_selectedCategory.value = value
+	fun showUpdateDialog() {
+		_isUpdateDialogVisible.value = true
 	}
 
+	fun hideUpdateDialog() {
+		_isUpdateDialogVisible.value = false
+	}
 
+	val questionVersions = 3
 
+	fun incrementQuestionIndex() {
+		viewModelScope.launch {
+			// Так как questionVersionIndex теперь StateFlow, мы можем безопасно прочитать .value
+			val currentIndex = questionVersionIndex.value
+			val nextIndex = (currentIndex + 1) % questionVersions
 
+			repository.saveQuestionIndex(nextIndex)
+		}
+	}
+	val questionVersionIndex: StateFlow<Int> = repository.getQuestionIndex().stateIn(
+		scope = viewModelScope,
+		started = SharingStarted.WhileSubscribed(5000L),
+		initialValue = 0 // начальное значение, пока данные читаются с диска
+	)
 
-	val defaultSpheres = AppTab.entries.map {
-		SphereState(
-			currentCalculatedValue = calculateValueUseCase(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE),
-			property1 = DEFAULT_SLIDER_VALUE,
-			property2 = DEFAULT_SLIDER_VALUE,
-			property3 = DEFAULT_SLIDER_VALUE
+	val defaultTabState = (0..<TABS).map {
+		TabState(
+			calculatedValue = calculateValueUseCase(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE),
+			value1 = DEFAULT_SLIDER_VALUE,
+			value2 = DEFAULT_SLIDER_VALUE,
+			value3 = DEFAULT_SLIDER_VALUE
 		)
 	}
 
@@ -50,38 +77,68 @@ class HomeViewModel(
 		repository.getAllPropertiesFlow(),
 		_localUpdates
 	) { allData, localUpdates ->
-
-		val states = AppTab.entries.map { tab ->
+		val states = (0..<TABS).map { index ->
 			// Получаем дефолтные или дисковые значения для 3-х параметров вкладки
-			val dbValues = allData.tabsData[tab.index] ?: listOf(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE)
+			val dbValues = allData.tabsData[index] ?: listOf(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE)
 
 			// Проверяем: если пользователь СЕЙЧАС двигает слайдер, берем значение из памяти,
 			// если нет — берем сохраненное с диска (dbValues)
-			val p1 = localUpdates["${tab.index}_0"] ?: dbValues[0]
-			val p2 = localUpdates["${tab.index}_1"] ?: dbValues[1]
-			val p3 = localUpdates["${tab.index}_2"] ?: dbValues[2]
+			val p1 = localUpdates["${index}_0"] ?: dbValues[0]
+			val p2 = localUpdates["${index}_1"] ?: dbValues[1]
+			val p3 = localUpdates["${index}_2"] ?: dbValues[2]
 
-			SphereState(
-				currentCalculatedValue = calculateValueUseCase(p1, p2, p3),
-				property1 = p1,
-				property2 = p2,
-				property3 = p3
+			TabState(
+				calculatedValue = calculateValueUseCase(p1, p2, p3),
+				value1 = p1,
+				value2 = p2,
+				value3 = p3
 			)
 		}
 
-		val isLoaded = allData.tabsData.isNotEmpty() && allData.tabsData.size == AppTab.entries.size
+		val isLoaded = allData.tabsData.isNotEmpty() && allData.tabsData.size == TABS
 
-		HomeUiState(sphereStates = states, isAllDataLoaded = isLoaded)
+		HomeUiState(tabStates = states, isAllDataLoaded = isLoaded)
 	}.stateIn(
 		scope = viewModelScope,
 		started = SharingStarted.WhileSubscribed(5000),
-		initialValue = HomeUiState(sphereStates = defaultSpheres, isAllDataLoaded = false)
+		initialValue = HomeUiState(tabStates = defaultTabState, isAllDataLoaded = false)
 	)
+
+	val softSkills: StateFlow<ArchetypeResult> = repository.getAllPropertiesFlow().map { allData ->
+		// Создаем дефолтный список на случай, если в БД еще нет данных по вкладке
+		val defaultSliderList = listOf(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE)
+
+		// Используем безопасный оператор получения get, подставляя дефолт, если ключа нет
+		val tab0 = allData.tabsData[0] ?: defaultSliderList
+		val tab1 = allData.tabsData[1] ?: defaultSliderList
+		val tab2 = allData.tabsData[2] ?: defaultSliderList
+
+		val eq = ((tab0.sum() / 12) * 100).roundToInt()
+		val sq = ((tab1.sum() / 12) * 100).roundToInt()
+		val aq = ((tab2.sum() / 12) * 100).roundToInt()
+		/*
+		val eq = ((allData.tabsData.getValue(0).sum() / 12) * 100).roundToInt()
+		val sq = ((allData.tabsData.getValue(1).sum() / 12) * 100).roundToInt()
+		val aq = ((allData.tabsData.getValue(2).sum() / 12) * 100).roundToInt()
+
+		 */
+
+		val resultPercent = ((eq + sq + aq) / 3.0).roundToInt()
+
+		val archetype = getArchetype(eq, sq, aq)
+		ArchetypeResult(resultPercent.toString(), archetype)
+	}
+		.flowOn(Dispatchers.Default) // увести вычисления из главного потока
+		.stateIn(
+			scope = viewModelScope,
+			started = SharingStarted.WhileSubscribed(5000),
+			initialValue = ArchetypeResult("50", Archetype.EMPATH)
+		)
 
 	// ВАЖНО: При движении слайдера пишем ТОЛЬКО в оперативную память (это мгновенно и плавно)
 	fun updateProperty(tabIndex: Int, propertyIndex: Int, value: Float) {
 		val key = "${tabIndex}_$propertyIndex"
-		_localUpdates.value = _localUpdates.value + (key to value)
+		_localUpdates.value += (key to value)
 	}
 
 	// При отпускании пальца записываем на диск
@@ -103,25 +160,252 @@ class HomeViewModel(
 		_localUpdates.value = emptyMap()
 	}
 
-
-
+	fun clearAllData() {
+		viewModelScope.launch {
+			clearAllDataUseCase.invoke()
+		}
+	}
 }
 
-enum class IntellectCategory { EQ, SQ, RQ }
+internal fun getArchetype(eq: Int, sq: Int, aq: Int): Archetype {
+	// =========================================================================
+	// 1. СУПЕР-ЭКСТРЕМУМЫ (Абсолютный максимум и минимум)
+	// =========================================================================
+	if (eq >= 90 && sq >= 90 && aq >= 90) return Archetype.INTEGRAL_INTELLIGENCE
+	if (eq < 10 && sq < 10 && aq < 10) return Archetype.TOTAL_CRISIS
 
-data class SphereState(
-	val currentCalculatedValue: Float,
-	val property1: Float,
-	val property2: Float,
-	val property3: Float
+	// =========================================================================
+	// 2. ЗОНА ТОТАЛЬНОГО ВЫГОРЕНИЯ И КРИЗИСА (Все показатели ниже нормы < 40%)
+	// =========================================================================
+	if (eq < 40 && sq < 40 && aq < 40) {
+		return if (eq < 30 && aq < 30) Archetype.EMOTIONAL_BURNOUT else Archetype.SOCIAL_DETACHMENT
+	}
+
+	// =========================================================================
+	// 3. АСИММЕТРИЧНЫЙ КРИЗИС (Эмоции и общение на дне, но воля держит систему)
+	// =========================================================================
+	if (eq <= 25 && sq <= 25 && aq > 40) return Archetype.ISOLATED_WORKER // Робот
+
+	// =========================================================================
+	// 4. ЗОНА ВЫСОКИХ РЕЗУЛЬТАТОВ (Стабильный топ >= 75% по всем шкалам)
+	// =========================================================================
+	if (eq >= 75 && sq >= 75 && aq >= 75) {
+		return if (aq > eq && aq > sq) Archetype.STRATEGIST else Archetype.CHARISMATIC
+	}
+
+	// =========================================================================
+	// 5. ЗОНА ЯВНЫХ ДЕФИЦИТОВ / ТОЧЕЧНЫХ ЗОН РОСТА
+	// Навык признается дефицитным, если он отстал от МАКСИМУМА остальных на >= 20 пунктов
+	// И сам находится в зоне явного спада (ниже 40%)
+	// =========================================================================
+	val deficitThreshold = 20
+	val maxVal = maxOf(eq, sq, aq)
+
+	if (aq <= (maxVal - deficitThreshold) && aq < 40) return Archetype.VULNERABLE_EXPERT // Просадка по AQ
+	if (sq <= (maxVal - deficitThreshold) && sq < 40) return Archetype.LONELY_SAGE        // Просадка по SQ
+	if (eq <= (maxVal - deficitThreshold) && eq < 40) return Archetype.EMPATHY_DEFICIT    // Просадка по EQ
+
+	// =========================================================================
+	// 6. ЗОНА СРЕДНЕГО БАЛАНСА / ГАРМОНИИ (Исправлено и сужено)
+	// Срабатывает, если разброс минимален (всего до 12 пунктов)
+	// И значения находятся строго в средних границах (от 40 до 65)
+	// =========================================================================
+	val minVal = minOf(eq, sq, aq)
+	val averageVal = (eq + sq + aq) / 3.0
+
+	if ((maxVal - minVal) <= 12 && averageVal in 40.0..65.0) {
+		return Archetype.HARMONY
+	}
+
+	// =========================================================================
+	// 7. СРЕДНЯЯ ЗОНА: Выраженная доминанта
+	// Если показатели вышли за рамки среднего баланса, побеждает сильнейший навык
+	// =========================================================================
+	return when {
+		aq >= eq && aq >= sq -> Archetype.STONE    // Воля и адаптивность
+		eq > aq && eq >= sq  -> Archetype.EMPATH   // Эмоции и интуиция
+		else                 -> Archetype.DIPLOMAT // Социальные связи
+	}
+}
+
+data class TabState(
+	val calculatedValue: Float,
+	val value1: Float,
+	val value2: Float,
+	val value3: Float
 )
 
-enum class AppTab(val index: Int, val key: String) {
-	RED(0, "red"),
-	ORANGE(1, "orange"),
-	YELLOW(2, "yellow"),
-	GREEN(3, "green"),
-	LIGHT_BLUE(4, "light_blue"),
-	BLUE(5, "blue"),
-	PINK(6, "pink")
+enum class Archetype {
+
+	HARMONY,
+
+	// =========================================================================
+	// 💎 СУПЕР-ЭКСТРЕМУМЫ (Абсолютный максимум и минимум по всем шкалам)
+	// =========================================================================
+
+	/**
+	 * НАЗВАНИЕ: Эталонный профиль (Интегральный интеллект)
+	 * СУТЬ: Сверхвысокие показатели (>90%) по всем трем шкалам.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Феноменальный результат. Вы обладаете редким, гармонично развитым комплексом мягких навыков.
+	 *   Вы безупречно понимаете себя, виртуозно управляете социальными процессами и сохраняете абсолютную продуктивность в хаосе.
+	 * - Рекомендация: У вас огромный потенциал для масштабного лидерства и наставничества. Главное — следите за тем,
+	 *   чтобы не перегружать себя из-за ощущения, что вы можете справиться абсолютно со всем самостоятельно.
+	 */
+	INTEGRAL_INTELLIGENCE,
+
+	/**
+	 * НАЗВАНИЕ: Глубокий кризис дезадаптации
+	 * СУТЬ: Тотальное падение всех навыков (<10%). Сигнал критического ментального состояния.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Критическая зона. Ваши показатели говорят о состоянии полной дезадаптации. В этот момент у психики
+	 *   нет ресурсов даже на базовое понимание своих чувств, не говоря уже об общении или борьбе с внешними трудностями.
+	 * - Рекомендация: Полностью остановите любую социальную и рабочую нагрузку. Вам необходим жесткий информационный детокс,
+	 *   восстановление сна и, желательно, бережная поддержка близких или профильного специалиста.
+	 */
+	TOTAL_CRISIS,
+
+
+	// =========================================================================
+	// 🚀 ВЫСОКИЕ ЗНАЧЕНИЯ (Стабильно высокий уровень по всем шкалам >75%)
+	// =========================================================================
+
+	/**
+	 * НАЗВАНИЕ: Стратег (Управленец)
+	 * СУТЬ: Все показатели выше 75%, но хладнокровие (AQ) преобладает над эмоциональной частью.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Высокий уровень развития навыков с упором на хладнокровие. Вы — гроссмейстер в мире Soft Skills.
+	 *   Вы идеально управляете процессами и сохраняете ясный ум там, где другие паникуют. Ваша сила — в системном и рациональном подходе.
+	 * - Рекомендация: Вы отличный антикризисный управляющий. Ваша точка роста — развитие более теплой неформальной коммуникации,
+	 *   чтобы команда видела в вас не просто эффективного робота, а живого лидера.
+	 */
+	STRATEGIST,
+
+	/**
+	 * НАЗВАНИЕ: Харизматик (Идейный лидер)
+	 * СУТЬ: Все показатели выше 75%, но фокус смещен на людей, вдохновение команды и эмпатию (EQ/SQ).
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Максимально сбалансированный профиль с фокусом на людей. Вы ведете за собой команду не силой приказа,
+	 *   а через вдохновение и глубокое понимание человеческой природы. Вы тонко чувствуете контекст и мотивы окружающих.
+	 * - Рекомендация: Прекрасная база для управления творческими и сильными командами. Помните о необходимости вовремя
+	 *   включать жесткий рацио, чтобы излишняя эмпатия не мешала вам принимать тяжелые непопулярные решения.
+	 */
+	CHARISMATIC,
+
+
+	// =========================================================================
+	// 🪫 ТОТАЛЬНО НИЗКИЕ ЗНАЧЕНИЯ (Критический спад по всем шкалам <40%)
+	// =========================================================================
+
+	/**
+	 * НАЗВАНИЕ: Эмоциональное выгорание
+	 * СУТЬ: Все показатели критически низкие из-за тотального истощения внутренних ресурсов и сил.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Сигнал об истощении. Ваши внутренние батарейки находятся в режиме глубокой разрядки. Низкие баллы сейчас —
+	 *   это не отсутствие у вас интеллекта, а признак того, что нервная система заблокировала эмоции ради выживания.
+	 * - Рекомендация: Категорически запрещено принудительно "качать" навыки общения. Перейдите в режим энергосбережения,
+	 *   минимизируйте контакты, делегируйте задачи и дайте себе время на физическое восстановление.
+	 */
+	EMOTIONAL_BURNOUT,
+
+	/**
+	 * НАЗВАНИЕ: Эмоциональная отстраненность
+	 * СУТЬ: Уход в рацио и самоизоляцию. Полная блокировка эмпатии ради безопасности.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Защитная изоляция. Вы умышленно или неосознанно возвели стену между собой и окружающим миром.
+	 *   Вы полностью заблокировали эмпатию и ушли в холодный анализ, чтобы обезопасить себя от социальных драм и потрясений.
+	 * - Рекомендация: Позиция наблюдателя дает безопасность, но лишает вас поддержки. Пробуйте постепенно возвращаться в коммуникацию:
+	 *   начните с безопасного общения на профессиональные темы, где нет сильного эмоционального накала.
+	 */
+	SOCIAL_DETACHMENT,
+
+
+	// =========================================================================
+	// ⚖️ СРЕДНЯЯ ЗОНА: СИЛЬНЫЕ ДОМИНАНТЫ (Когда выражен один главный плюс)
+	// =========================================================================
+
+	/**
+	 * НАЗВАНИЕ: Скала (Кризис-менеджер)
+	 * СУТЬ: Главная опора на стрессоустойчивость и жизнестойкость (AQ). Железная выдержка.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Ваша главная опора — стрессоустойчивость и жизнестойкость. В стрессовых ситуациях вы стабильны,
+	 *   надежны и умеете держать удар. Однако при этом вы можете игнорировать как свои скрытые чувства, так и переживания близких.
+	 * - Рекомендация: Обратите внимание на развитие эмпатии. Учитесь не просто переносить стресс "на характере",
+	 *   а вовремя замечать и экологично проживать зарождающиеся эмоции (особенно раздражение и усталость).
+	 */
+	STONE,
+
+	/**
+	 * НАЗВАНИЕ: Эмпат (Психолог)
+	 * СУТЬ: Главная опора на глубокое понимание чувств и состояний (EQ). Тонкая интуиция.
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Ваша суперсила — глубокое понимание чувств. Вы идеально считываете микромимику и скрытые мотивы людей.
+	 *   Вы сострадательны, но из-за отсутствия жестких ментальных границ рискуете мгновенно заражаться чужим стрессом.
+	 * - Рекомендация: Сфокусируйтесь на развитию жизнестойкости (AQ). Вам жизненно необходимо научиться выстраивать жесткие
+	 *   психологические границы, чтобы чужие проблемы и дедлайны не разрушали ваше личное равновесие.
+	 */
+	EMPATH,
+
+	/**
+	 * НАЗВАНИЕ: Дипломат (Нетворкер)
+	 * СУТЬ: Главная опора на социальные связи, нетворкинг и обход манипуляций (SQ).
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Мастер социальных связей. Вы виртуозно маневрируете в социуме, легко заводите контакты, гасите конфликты
+	 *   и обходите манипуляции. Ваша слабость может заключаться в поверхностности: вы больше увлечены формой общения, а не сутью чувств.
+	 * - Рекомендация: Развивайте самосознание (EQ). За внешней легкостью общения важно не потерять контакт со своими истинными потребностями.
+	 *   Почаще спрашивайте себя: "Чего хочу именно я, а не социальное окружение?".
+	 */
+	DIPLOMAT,
+
+
+	// =========================================================================
+	// ⚠️ СРЕДНЯЯ ЗОНА: ТОЧЕЧНЫЕ ЗОНЫ РОСТА (Когда выражен один явный минус)
+	// =========================================================================
+
+	/**
+	 * НАЗВАНИЕ: Ранимый профессионал
+	 * СУТЬ: Высокие EQ и SQ (общение/чувства), но критически отстает стрессоустойчивость (AQ).
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Точечный дефицит стрессоустойчивости. Вы прекрасно понимаете людей и являетесь отличным коммуникатором,
+	 *   но абсолютно беззащитны перед критикой, форс-мажорами и резкой сменой планов. Любая неудача выбивает вас из колеи.
+	 * - Рекомендация: Ваша ключевая зона роста — прокачка AQ (жизнестойкости). Учитесь разделять рабочую критику и свою личность.
+	 *   Развивайте "мышление роста", воспринимая ошибки как сухой массив данных для корректировки курса.
+	 */
+	VULNERABLE_EXPERT,
+
+	/**
+	 * НАЗВАНИЕ: Замкнутый мудрец
+	 * СУТЬ: Высокие EQ и AQ (контроль/чувства), но критически отстает социальное взаимодействие (SQ).
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Точечный дефицит социального взаимодействия. Вы отлично понимаете себя и обладаете высокой ментальной стойкостью,
+	 *   но совершенно не умеете (или сознательно избегаете) выстраивать долгосрочные рабочие и личные связи.
+	 * - Рекомендация: Ваша зона роста — развитие SQ. Без социальных связей ваши крутые идеи остаются незамеченными.
+	 *   Начните с малого: практикуйте навыки нетворкинга (Small Talk) и учитесь делегировать задачи, доверяя людям.
+	 */
+	LONELY_SAGE,
+
+	/**
+	 * НАЗВАНИЕ: Стихийный лидер
+	 * СУТЬ: Высокие SQ и AQ (связи/контроль), но критически отстает эмпатия (EQ) — "эмоциональная слепота".
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Точечный дефицит эмпатии. Вы социально активны и хладнокровны в кризисах, но абсолютно "эмоционально слепы".
+	 *   Вы часто идете напролом ради достижения цели, искренне не замечая, как раните, обижаете или демотивируете людей вокруг.
+	 * - Рекомендация: Ваша зона роста — EQ (эмпатия). Без понимания чувств людей вы рискуете остаться в изоляции.
+	 *   Перед принятием решений делайте паузу и думайте, как это отразится на состоянии и мотивации вашей команды или близких.
+	 */
+	EMPATHY_DEFICIT,
+
+	/**
+	 * НАЗВАНИЕ: Робот (Замкнутый исполнитель)
+	 * СУТЬ: Аномальный кризис. EQ и SQ на нулях, но воля и жизнестойкость (AQ) удерживают на плаву.
+	 * ЭМОДЗИ: 🤖
+	 * ТЕКСТ ДЛЯ UI:
+	 * - Описание: Состояние механического автопилота. Ваши эмоции (EQ) и социальные связи (SQ) находятся на нулевом уровне,
+	 *   но воля и жизнестойкость (AQ) всё ещё удерживают вас на плаву. Вы продолжаете функционировать и выполнять задачи "на характере",
+	 *   но полностью отрезали себя от чувств и людей.
+	 * - Рекомендация: Долго ехать на одном упрямстве без эмоциональной подзарядки и поддержки невозможно — это прямой путь к тотальному выгоранию.
+	 *   Начните с малого: вернитесь к базовым хобби, которые приносят удовольствие, и выйдите на связь хотя бы с одним близким человеком.
+	 */
+	ISOLATED_WORKER
 }
+
