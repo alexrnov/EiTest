@@ -4,7 +4,7 @@ The app determines your soft skills level in just a few questions. The test eval
 
 The application was developed using Jetpack Compose and Kotlin.
 
-Light theme:
+<p align="center">Light theme</p>
 
 <p align="center">
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_1.png" hspace="10" width="180" title="UI">
@@ -13,7 +13,7 @@ Light theme:
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_4.png" hspace="10" width="180" title="UI">
 </p>
 
-Dark theme:
+<p align="center">Dark theme</p>
 
 <p align="center">
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_9.png" hspace="10" width="180" title="UI">
