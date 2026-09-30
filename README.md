@@ -22,7 +22,7 @@ The app determines your soft skills level in just a few questions. The test eval
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_8.png" hspace="10" width="180" title="UI">
 </p>
 
-Code example:
+Select theme code example:
 
 ```kotlin
 @Composable
