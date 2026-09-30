@@ -52,9 +52,9 @@ fun AppTheme(
 ViewModel code example:
 ```kotlin
 class HomeViewModel(
-    private val repository: PropertiesRepository,
-	  private val calculateValueUseCase: CalculateValueUseCase,
-	  private val clearAllDataUseCase: ClearAllDataUseCase
+	private val repository: PropertiesRepository,
+	private val calculateValueUseCase: CalculateValueUseCase,
+	private val clearAllDataUseCase: ClearAllDataUseCase
 ) : ViewModel() {
 	val uiState: StateFlow<HomeUiState> = combine(
 		repository.getAllPropertiesFlow(),
