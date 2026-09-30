@@ -32,13 +32,13 @@ fun AppTheme(
     isTablet: Boolean,
     content: @Composable() () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> darkScheme
-        else -> lightScheme
+	val colorScheme = when {
+		dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+			val context = LocalContext.current
+			if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+		}
+		darkTheme -> darkScheme
+		else -> lightScheme
     }
 
     MaterialTheme(
@@ -56,30 +56,34 @@ class HomeViewModel(
 	  private val calculateValueUseCase: CalculateValueUseCase,
 	  private val clearAllDataUseCase: ClearAllDataUseCase
 ) : ViewModel() {
-    val uiState: StateFlow<HomeUiState> = combine(
-		    repository.getAllPropertiesFlow(),
-		    _localUpdates
-    ) { allData, localUpdates ->
-        val states = (0..<TABS).map { index ->
-			      val dbValues = allData.tabsData[index] ?: listOf(DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE, DEFAULT_SLIDER_VALUE)
+	val uiState: StateFlow<HomeUiState> = combine(
+		repository.getAllPropertiesFlow(),
+		_localUpdates
+	) { allData, localUpdates ->
+		val states = (0..<TABS).map { index ->
+			val dbValues = allData.tabsData[index] ?: listOf(
+				DEFAULT_SLIDER_VALUE,
+				DEFAULT_SLIDER_VALUE,
+				DEFAULT_SLIDER_VALUE
+			)
 
-			      val p1 = localUpdates["${index}_0"] ?: dbValues[0]
-			      val p2 = localUpdates["${index}_1"] ?: dbValues[1]
-			      val p3 = localUpdates["${index}_2"] ?: dbValues[2]
+			val p1 = localUpdates["${index}_0"] ?: dbValues[0]
+			val p2 = localUpdates["${index}_1"] ?: dbValues[1]
+			val p3 = localUpdates["${index}_2"] ?: dbValues[2]
 
-			      TabState(
-				        calculatedValue = calculateValueUseCase(p1, p2, p3),
-				        value1 = p1,
-				        value2 = p2,
-				        value3 = p3
-			      )
-        }
-		    val isLoaded = allData.tabsData.isNotEmpty() && allData.tabsData.size == TABS
-		    HomeUiState(tabStates = states, isAllDataLoaded = isLoaded)
-    }.stateIn(
-		    scope = viewModelScope,
-		    started = SharingStarted.WhileSubscribed(5000),
-		    initialValue = HomeUiState(tabStates = defaultTabState, isAllDataLoaded = false)
-    )
+			TabState(
+				calculatedValue = calculateValueUseCase(p1, p2, p3),
+				value1 = p1,
+				value2 = p2,
+				value3 = p3
+			)
+		}
+		val isLoaded = allData.tabsData.isNotEmpty() && allData.tabsData.size == TABS
+		HomeUiState(tabStates = states, isAllDataLoaded = isLoaded)
+	}.stateIn(
+		scope = viewModelScope,
+		started = SharingStarted.WhileSubscribed(5000),
+		initialValue = HomeUiState(tabStates = defaultTabState, isAllDataLoaded = false)
+	)
 }
 ```
