@@ -2,9 +2,9 @@
 
 The app determines your soft skills level in just a few questions. The test evaluates three key areas: emotional intelligence (EQ) — the ability to understand your own and others' emotions, social intelligence (SQ) — communication and social interaction skills, and adaptability quotient (AQ) — the ability to adapt to changes and handle stress.
 
-The application was developed using Jetpack Compose and Kotlin.
+<em>The application was developed using Jetpack Compose and Kotlin.</em>
 
-<p align="center">Light theme</p>
+<h3 align="center">Light theme</h3>
 
 <p align="center">
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_1.png" hspace="10" width="180" title="UI">
@@ -13,7 +13,7 @@ The application was developed using Jetpack Compose and Kotlin.
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_4.png" hspace="10" width="180" title="UI">
 </p>
 
-<p align="center">Dark theme</p>
+<h3 align="center">Dark theme</h3>
 
 <p align="center">
   <img src="https://github.com/alexrnov/Files/blob/master/ei_test_9.png" hspace="10" width="180" title="UI">
